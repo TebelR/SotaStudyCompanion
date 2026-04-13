@@ -1,0 +1,145 @@
+<!-- File originally created by Jonathan Placatka-->
+<project name="SotaPrograms" default="compile" basedir=".">
+
+
+        <!-- ================== -->
+        <!-- USER CONFIGURATION -->
+
+        <!--ip -->
+        <!--- CONFIGURE THIS for your Sota -->
+<!--        <property name="scp.server" value="192.168.0.23"/>-->
+         <property name="scp.server" value="10.186.226.136"/>
+         
+        <!--scp credentials -->
+        <property name="scp.edison.user" value="root"  />
+        <property name="scp.edison.pass" value="edison00" />
+
+        <!--target folders -->
+        <property name="sota.basedir" value="/home/root/sotaprograms" />
+
+        <!--dir structure -->
+        <property name="src.dir" value="src"/>
+        <property name="bin.dir" value="bin"/>
+        <property name="lib.dir" value="lib"/>
+        <property name="jars.dir" value="jars"/>
+        <property name="resources.dir" value="resources"/>
+        <property name="javadoc.dir" value="docs"/>
+        
+        <property name="remotelib.dir" value="/home/vstone/lib"/>
+
+        <!--runnable classpath. Update if you need new libraries -->
+        <property name="jar.classpath"
+         value=". /home/vstone/lib/commons-math3-3.6.1.jar /home/vstone/lib/sotalib.jar /home/vstone/lib/SRClientHelper.jar /home/vstone/lib/core-2.2.jar /home/vstone/lib/javase-2.2.jar  /home/vstone/lib/jna-4.1.0.jar /home/vstone/lib/gson-2.6.1.jar /usr/local/share/OpenCV/java/opencv-310.jar /home/vstone/lib/marytts-runtime-5.2-jar-with-dependencies.jar /home/vstone/lib/marytts-lang-en-5.2.jar /home/vstone/lib/voice-dfki-prudence-hsmm-5.2.jar /home/vstone/lib/voice-cmu-slt-hsmm-5.2.jar" />
+                                   
+        <path id="build.lib">   <!-- include all jars in the listed lib dir into our classpath-->
+                <fileset dir="${lib.dir}" includes="*.jar" />
+        </path>
+
+        <!-- ============ -->
+        <!-- ============ Check further below for actual source targets, you will need to add your own as you go-->
+        <!-- ============ -->
+
+
+
+        <target name="clean">
+                <delete dir="${bin.dir}"/>
+                <delete dir="${jars.dir}"/>
+                <echo>delete complete!</echo>
+        </target>
+
+         <target name="investigate">
+                <!-- Where is this property coming from? -->
+                <echoproperties/>
+                
+                <!-- Check all references to scp.server -->
+                <echo>Property scp.server = [${scp.server}]</echo>
+                
+                <!-- Check if it's an environment variable -->
+                <property environment="env"/>
+                <echo>Env SCP_SERVER = [${env.SCP_SERVER}]</echo>
+                <echo>Env SCP.SERVER = [${env.SCP.SERVER}]</echo>
+        </target>
+
+        <target name="clean-remote">
+                <!-- make the folder if it doesn't exist -->
+                <sshexec
+                        host="${scp.server}"
+                        username="${scp.edison.user}"
+                        password="${scp.edison.pass}"
+                        command="rm -rf ${sota.basedir}"
+                        trust="true" />
+                <echo>remote delete complete!</echo>
+        </target>
+
+        <target name="compile">
+                <mkdir dir="${bin.dir}"/>
+                <javac includeantruntime="false" classpathref="build.lib" srcdir="${src.dir}" destdir="${bin.dir}" encoding="utf-8" release="8" debug="true" bootclasspath="lib/rt.jar">
+                        <compilerarg value="-Xlint:unchecked"/>  <!-- suppress warnings about deprecated java 8, seems to not work -->
+                </javac>
+        </target>
+
+
+        <!-- ============ -->
+        <target name="__make_jar">  <!-- internal use -->
+                <jar jarfile="${jars.dir}/${jar.name}" basedir="${bin.dir}">
+                        <manifest>
+                                <attribute name="Main-Class" value="${jar.class}"/>
+                                <attribute name="Class-Path" value="${jar.classpath}"/>
+                        </manifest>
+                </jar>
+        </target>
+        <target name="make_jars" depends="compile">
+
+                <!-- Make a target for each program -->
+                <!-- ============ -->
+                <!-- ============ add your own as you go-->
+                <!-- ============ -->
+                <!-- <antcall target="__make_jar">
+                        <param name="jar.class" value="a4.Server" />
+                        <param name="jar.name" value="a4-server.jar" />
+                </antcall> -->
+
+                <antcall target="__make_jar">
+                        <param name="jar.class" value="a4.SotaFocusCompanion" />
+                        <param name="jar.name" value="a4-behavior.jar" />
+                </antcall>                
+                
+               
+        </target>
+
+        <target name="upload_jars">
+
+                <!-- make the folder if it doesn't exist -->
+                <sshexec
+                        host="${scp.server}"
+                        username="${scp.edison.user}"
+                        password="${scp.edison.pass}"
+                        command="mkdir -p ${sota.basedir}/${jars.dir}"
+                        trust="true" />
+    
+                <scp todir="${scp.edison.user}:${scp.edison.pass}@${scp.server}:${sota.basedir}/${jars.dir}" trust="yes" sftp="true" >       
+                        <fileset dir="${jars.dir}"/>
+                </scp>
+        </target>
+
+        <target name="upload_resources">
+                <!-- make the folder if it doesn't exist -->
+                <sshexec
+                        host="${scp.server}"
+                        username="${scp.edison.user}"
+                        password="${scp.edison.pass}"
+                        command="mkdir -p ${sota.basedir}/${resources.dir}"
+                        trust="true" />
+    
+                <scp todir="${scp.edison.user}:${scp.edison.pass}@${scp.server}:${sota.basedir}/${resources.dir}" trust="yes" sftp="true" >       
+                        <fileset dir="${resources.dir}"/>
+                </scp>
+   
+                <scp todir="${scp.edison.user}:${scp.edison.pass}@${scp.server}:${remotelib.dir}" trust="yes" sftp="true" >       
+                        <fileset dir="${lib.dir}"/>
+                </scp>
+        </target>
+
+        <target name="compile_and_send_jars" depends="compile, make_jars, upload_jars" description="Compile all into Jars and upload">
+        </target>
+</project>

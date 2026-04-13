@@ -1,0 +1,6 @@
+done /1e-40/
+break /1e-40/
+work /1e-40/
+sure /1e-40/
+no /1e-40/
+yes /1e-40/
